@@ -39,14 +39,25 @@ gbv_studio_albums <- tibble(album_name = studio_albums_cleaned,
   # no track listing for new album yet
   filter(row_number() != 1)
 
-# test 1 album url to scrape tracklist
-# need to remove blank elements - will do that at end
-
-test_tracklist <- read_html("http://www.gbvdb.com/album.asp?albumid=3405") %>% 
-  html_nodes('.HighlightOff td') %>% 
+# function to take url of album and scrape tracklist from that page
+tracklist_scrape <- function(full_url) {
+  read_html(full_url) %>% 
+  html_nodes('.HighlightOff td:nth-child(1)') %>% 
   html_text() %>% 
   str_remove_all("\r|\n|\t") %>% 
   str_remove("^[0-9]{1,}\\.") %>% 
   str_trim()
+}
+
+# create a nested list of song names for each album by mapping urls over function above
+gbv_studio_album_tracks_nested <- gbv_studio_albums %>% 
+  mutate(song_name = map(full_url, tracklist_scrape))
+
+# unnest song names to get row for each song
+gbv_studio_album_tracks <- gbv_studio_album_tracks_nested %>% 
+  unnest(song_name) 
+
+# save dataset
+write_rds(gbv_studio_album_tracks, "gbv_studio_album_tracks.rds")
 
 
